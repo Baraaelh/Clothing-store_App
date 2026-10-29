@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// إعدادات الاتصال بالسيرفر.
 ///
 /// ⚠️ الـ API لم يُحدد بعد. عند استلامه:
@@ -11,11 +13,18 @@ abstract final class ApiConfig {
   static const Duration receiveTimeout = Duration(seconds: 30);
 
   static bool get isConfigured => baseUrl.isNotEmpty;
+
+  /// وضع التطوير بدون API: دخول تجريبي وبيانات تجريبية. لا يعمل أبدًا في نسخة الإصدار.
+  static bool get isDevMode => kDebugMode && !isConfigured;
 }
 
 /// مسارات الـ API. القيمة `null` تعني أن المسار غير معروف بعد،
 /// وأي طلب عليه يرمي [ApiNotConfiguredException] بدل أن يفشل بصمت.
 abstract final class ApiEndpoints {
+  // ---- الدخول ----
+  /// POST: تسجيل الدخول، يرجع التوكن وبيانات المستخدم وفرعه.
+  static const String? login = null; // مثال: '/login'
+
   // ---- الكاشير ----
   /// GET: منتجات الفرع (variants) مع الكمية المتوفرة.
   static const String? catalog = null; // مثال: '/branches/{branchId}/catalog'

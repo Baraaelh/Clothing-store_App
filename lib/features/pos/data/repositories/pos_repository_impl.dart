@@ -1,8 +1,8 @@
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/config/app_settings.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/session/session_manager.dart';
 import '../../../../core/utils/result.dart';
 import '../../domain/entities/catalog_item.dart';
 import '../../domain/entities/checkout_request.dart';
@@ -14,12 +14,12 @@ import '../models/sale_model.dart';
 
 /// Offline-first: كل القراءة والكتابة من SQLite. الإرسال للسيرفر عبر طابور المزامنة.
 class PosRepositoryImpl implements PosRepository {
-  PosRepositoryImpl(this._local, this._settings, {Uuid uuid = const Uuid(), DateTime Function()? clock})
+  PosRepositoryImpl(this._local, this._session, {Uuid uuid = const Uuid(), DateTime Function()? clock})
     : _uuid = uuid,
       _clock = clock ?? DateTime.now;
 
   final PosLocalDataSource _local;
-  final AppSettings _settings;
+  final SessionManager _session;
   final Uuid _uuid;
   final DateTime Function() _clock;
 
@@ -34,10 +34,12 @@ class PosRepositoryImpl implements PosRepository {
 
   @override
   Future<Result<Sale>> createSale(CheckoutRequest request) async {
+    final session = _session.current;
+    if (session == null) return const Err(UnauthorizedFailure());
     final sale = Sale(
       id: _uuid.v4(),
-      branchId: _settings.branchId,
-      cashierName: _settings.cashierName,
+      branchId: session.branchId,
+      cashierName: session.userName,
       customerName: (request.customerName?.trim().isEmpty ?? true) ? null : request.customerName!.trim(),
       paymentMethod: request.paymentMethod,
       subtotal: request.subtotal,

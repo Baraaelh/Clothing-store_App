@@ -14,6 +14,7 @@ class SyncReport extends Equatable {
     this.pulled = const [],
     this.offline = false,
     this.notConfigured = false,
+    this.unauthorized = false,
   });
 
   final int pushed;
@@ -26,8 +27,11 @@ class SyncReport extends Equatable {
   /// الـ API غير مضبوط بعد، فلم يُرسل شيء.
   final bool notConfigured;
 
+  /// السيرفر رد بـ 401: الجلسة انتهت. العمليات تبقى في الطابور كما هي.
+  final bool unauthorized;
+
   @override
-  List<Object?> get props => [pushed, failed, pulled, offline, notConfigured];
+  List<Object?> get props => [pushed, failed, pulled, offline, notConfigured, unauthorized];
 }
 
 /// محرك المزامنة: يرسل الطابور أولًا (push) ثم يسحب التحديثات (pull).
@@ -58,7 +62,7 @@ class SyncService {
     _running = true;
     try {
       final push = await _pushAll();
-      if (push.offline || push.notConfigured) return push;
+      if (push.offline || push.notConfigured || push.unauthorized) return push;
       final pulled = await _pullAll();
       return SyncReport(
         pushed: push.pushed,
@@ -66,6 +70,7 @@ class SyncService {
         pulled: pulled.names,
         offline: pulled.offline,
         notConfigured: pulled.notConfigured,
+        unauthorized: pulled.unauthorized,
       );
     } finally {
       _running = false;
@@ -94,6 +99,8 @@ class SyncService {
           pushed++;
         } on NetworkException {
           return SyncReport(pushed: pushed, failed: failed, offline: true);
+        } on UnauthorizedException {
+          return SyncReport(pushed: pushed, failed: failed, unauthorized: true);
         } on ApiNotConfiguredException {
           return SyncReport(pushed: pushed, failed: failed, notConfigured: true);
         } on ServerException catch (e) {
@@ -122,7 +129,7 @@ class SyncService {
     return SyncReport(pushed: pushed, failed: failed);
   }
 
-  Future<({List<String> names, bool offline, bool notConfigured})> _pullAll() async {
+  Future<({List<String> names, bool offline, bool notConfigured, bool unauthorized})> _pullAll() async {
     final names = <String>[];
     var notConfigured = false;
     for (final puller in _pullers) {
@@ -130,13 +137,15 @@ class SyncService {
         await puller.pull();
         names.add(puller.name);
       } on NetworkException {
-        return (names: names, offline: true, notConfigured: false);
+        return (names: names, offline: true, notConfigured: false, unauthorized: false);
+      } on UnauthorizedException {
+        return (names: names, offline: false, notConfigured: false, unauthorized: true);
       } on ApiNotConfiguredException {
         notConfigured = true;
       } catch (e, st) {
         developer.log('Sync pull "${puller.name}" failed', error: e, stackTrace: st, name: 'sync');
       }
     }
-    return (names: names, offline: false, notConfigured: notConfigured);
+    return (names: names, offline: false, notConfigured: notConfigured, unauthorized: false);
   }
 }

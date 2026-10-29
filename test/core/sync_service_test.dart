@@ -171,4 +171,21 @@ void main() {
 
     expect(results.whereType<SyncReport>(), hasLength(1));
   });
+
+  test('401 stops the sync and leaves every operation untouched', () async {
+    await enqueue('a');
+    await enqueue('b');
+    final handler = FakeHandler({
+      'a': [const UnauthorizedException()],
+    });
+    final puller = FakePuller();
+
+    final report = await SyncService(queue: queue, handlers: [handler], pullers: [puller]).run();
+
+    expect(report!.unauthorized, isTrue);
+    expect(handler.pushed, isEmpty);
+    expect(handler.permanentlyFailed, isEmpty);
+    expect((await queue.pending()).map((o) => (o.entityId, o.attempts)), [('a', 0), ('b', 0)]);
+    expect(puller.calls, 0);
+  });
 }

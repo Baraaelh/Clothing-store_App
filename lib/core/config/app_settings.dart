@@ -1,15 +1,13 @@
-/// إعدادات الجهاز. ثابتة الآن، وتنتقل لاحقًا لشاشة إعدادات أو تأتي من تسجيل الدخول.
+/// إعدادات الجهاز العامة. الفرع والمستخدم يأتيان من الجلسة (`SessionManager`).
 class AppSettings {
   const AppSettings({
-    required this.branchId,
-    required this.cashierName,
+    this.deviceName = 'anaqa-mobile',
     this.syncInterval = const Duration(minutes: 2),
     this.maxSyncAttempts = 10,
   });
 
-  /// الفرع الذي يعمل عليه هذا الجهاز (`branches.id` في السيرفر).
-  final int branchId;
-  final String cashierName;
+  /// اسم الجهاز المرسل عند تسجيل الدخول (يظهر كاسم للتوكن في السيرفر).
+  final String deviceName;
 
   /// كل كم تحاول المزامنة تلقائيًا أثناء وجود اتصال.
   final Duration syncInterval;
