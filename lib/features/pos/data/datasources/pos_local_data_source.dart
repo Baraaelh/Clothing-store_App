@@ -133,6 +133,13 @@ class PosLocalDataSource {
     });
   }
 
+  /// عند الدخول بفرع مختلف: منتجات الفرع السابق وكمياته لم تعد صالحة.
+  /// الفواتير لا تُحذف (قد تكون بانتظار الإرسال).
+  Future<void> clearCatalog() async {
+    final db = await _appDb.database;
+    await db.delete(Tables.catalogItems);
+  }
+
   Future<bool> isCatalogEmpty() async {
     final db = await _appDb.database;
     final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM ${Tables.catalogItems}'));

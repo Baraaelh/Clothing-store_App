@@ -1,4 +1,3 @@
-import 'package:anaqa_mobile/core/config/app_settings.dart';
 import 'package:anaqa_mobile/core/database/app_database.dart';
 import 'package:anaqa_mobile/core/error/failures.dart';
 import 'package:anaqa_mobile/core/sync/sync_queue.dart';
@@ -24,7 +23,7 @@ void main() {
     db = await createTestDatabase();
     queue = SyncQueue(db);
     local = PosLocalDataSource(db, queue);
-    repository = PosRepositoryImpl(local, const AppSettings(branchId: 3, cashierName: 'سارة'));
+    repository = PosRepositoryImpl(local, await sessionManagerWith(testSession));
     await local.replaceCatalog([catalogRow(variantId: 1, quantity: 5), catalogRow(variantId: 2, quantity: 2)]);
   });
 

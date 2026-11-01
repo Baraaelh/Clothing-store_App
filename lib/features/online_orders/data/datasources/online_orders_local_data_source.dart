@@ -66,6 +66,12 @@ class OnlineOrdersLocalDataSource {
     });
   }
 
+  /// عند الدخول بفرع مختلف: يحذف طلبات الفرع السابق، ويُبقي التغييرات التي لم تُرسل بعد.
+  Future<void> clearSynced() async {
+    final db = await _appDb.database;
+    await db.delete(Tables.onlineOrders, where: 'sync_status = ?', whereArgs: [SyncStatus.synced]);
+  }
+
   Future<void> markSynced(String orderId) => _setSyncStatus(orderId, SyncStatus.synced);
 
   /// السيرفر رفض التغيير: نرجع الطلب لـ "معلق" حتى يُسحب وضعه الحقيقي.

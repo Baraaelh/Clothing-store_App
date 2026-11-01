@@ -34,3 +34,8 @@ class ServerFailure extends Failure {
 class ValidationFailure extends Failure {
   const ValidationFailure(super.message);
 }
+
+/// الجلسة انتهت أو التوكن غير صالح.
+class UnauthorizedFailure extends Failure {
+  const UnauthorizedFailure([super.message = 'انتهت الجلسة، يرجى تسجيل الدخول من جديد']);
+}

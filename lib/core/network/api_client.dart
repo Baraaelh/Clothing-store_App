@@ -80,6 +80,9 @@ class ApiClient {
         return NetworkException(e.message ?? 'Connection failed');
       case DioExceptionType.badResponse:
         final response = e.response;
+        if (response?.statusCode == 401) {
+          return UnauthorizedException(_extractMessage(response?.data) ?? 'Unauthorized');
+        }
         return ServerException(_extractMessage(response?.data) ?? 'Server error', statusCode: response?.statusCode);
       case DioExceptionType.unknown:
         if (e.error is SocketException) return NetworkException(e.message ?? 'Socket error');

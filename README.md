@@ -3,6 +3,8 @@
 تطبيق Flutter للكاشير وطلبات الموقع. **يعمل بدون إنترنت**: كل شيء يُحفظ في SQLite على الجهاز، ويُرسل للسيرفر تلقائيًا عند توفر الاتصال.
 
 ## الميزات
+- **تسجيل الدخول:** التوكن يُحفظ في التخزين الآمن للجهاز، والجلسة تُستعاد عند فتح التطبيق بدون إنترنت. الفرع واسم الكاشير يأتيان من حساب المستخدم. عند انتهاء الجلسة (401) يرجع التطبيق لشاشة الدخول **دون أن يفقد العمليات المنتظرة**.
+- **الصلاحيات:** الكاشير يرى الكاشير فقط. المالك والمدير يرون طلبات الموقع أيضًا.
 - **الكاشير:** بحث في المنتجات (منتج + لون + مقاس)، سلة، خصم، دفع نقدي / محفظة / بنكي، حساب الباقي. لا يسمح بالبيع بأكثر من الكمية المتوفرة ولا بأقل من الحد الأدنى للسعر.
 - **طلبات الموقع:** عرض الطلبات حسب الحالة، قبول ورفض، تفاصيل الزبون والأصناف.
 - **المزامنة:** أيقونة في الأعلى تعرض حالة الاتصال وعدد العمليات المنتظرة، مع "مزامنة الآن" و"إعادة محاولة الفاشلة".
@@ -10,7 +12,7 @@
 ## التشغيل
 ```bash
 flutter pub get
-flutter run                                                   # بدون API: بيانات تجريبية (وضع التطوير فقط)
+flutter run                                                   # بدون API: دخول وبيانات تجريبية (وضع التطوير فقط)
 flutter run --dart-define=API_BASE_URL=https://example.com/api
 flutter test
 ```
@@ -20,7 +22,8 @@ flutter test
 lib/
 ├── app/                      # MaterialApp، الثيم، الشاشة الرئيسية
 ├── core/
-│   ├── config/               # ApiConfig (المسارات)، AppSettings (الفرع، فترة المزامنة)
+│   ├── config/               # ApiConfig (المسارات)، AppSettings (اسم الجهاز، فترة المزامنة)
+│   ├── session/              # الجلسة الحالية (التوكن، المستخدم، الفرع) وحفظها الآمن
 │   ├── database/             # SQLite: الجداول، الترحيلات، بيانات تجريبية
 │   ├── di/                   # get_it
 │   ├── error/                # Exceptions (data) → Failures (domain)
@@ -28,6 +31,7 @@ lib/
 │   ├── sync/                 # طابور المزامنة، المحرك، SyncCubit
 │   └── utils/                # Result<T>، Money
 └── features/
+    ├── auth/                 # تسجيل الدخول والخروج
     ├── pos/                  # الكاشير
     └── online_orders/        # طلبات الموقع
         ├── domain/           # entities، repository (interface)، usecases — بدون Flutter
@@ -58,7 +62,7 @@ lib/
 | `features/pos/data/datasources/pos_remote_data_source.dart` | شكل الردود |
 | `features/online_orders/data/models/online_order_model.dart` | تحويل رد الطلبات |
 | `features/online_orders/data/datasources/online_orders_remote_data_source.dart` | طريقة تغيير الحالة |
-| `lib/core/di/injection.dart` | `tokenProvider` عند إضافة تسجيل الدخول |
+| `features/auth/data/datasources/auth_remote_data_source.dart` | شكل رد تسجيل الدخول |
 
 المبالغ داخل التطبيق أعداد صحيحة بالأغورة (`2500` = ₪25.00)، والتحويل من/إلى `"25.00"` يتم في الـ models فقط.
 

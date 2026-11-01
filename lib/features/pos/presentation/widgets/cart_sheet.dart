@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/money.dart';
 import '../cubit/cart_cubit.dart';
+import '../cubit/catalog_cubit.dart';
 import 'checkout_sheet.dart';
 
 class CartSheet extends StatelessWidget {
@@ -12,7 +13,14 @@ class CartSheet extends StatelessWidget {
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => BlocProvider.value(value: context.read<CartCubit>(), child: const CartSheet()),
+    // النافذة route منفصل: نمرر لها الـ cubits التي تحتاجها هي ونافذة الدفع.
+    builder: (_) => MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: context.read<CartCubit>()),
+        BlocProvider.value(value: context.read<CatalogCubit>()),
+      ],
+      child: const CartSheet(),
+    ),
   );
 
   @override

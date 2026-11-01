@@ -16,6 +16,7 @@ class SyncState extends Equatable {
     this.failedCount = 0,
     this.lastSyncAt,
     this.apiConfigured = true,
+    this.sessionExpired = false,
   });
 
   final bool isOnline;
@@ -27,6 +28,9 @@ class SyncState extends Equatable {
   final DateTime? lastSyncAt;
   final bool apiConfigured;
 
+  /// السيرفر رفض التوكن (401). الواجهة ترجع لشاشة الدخول.
+  final bool sessionExpired;
+
   SyncState copyWith({
     bool? isOnline,
     bool? isSyncing,
@@ -34,6 +38,7 @@ class SyncState extends Equatable {
     int? failedCount,
     DateTime? lastSyncAt,
     bool? apiConfigured,
+    bool? sessionExpired,
   }) => SyncState(
     isOnline: isOnline ?? this.isOnline,
     isSyncing: isSyncing ?? this.isSyncing,
@@ -41,10 +46,19 @@ class SyncState extends Equatable {
     failedCount: failedCount ?? this.failedCount,
     lastSyncAt: lastSyncAt ?? this.lastSyncAt,
     apiConfigured: apiConfigured ?? this.apiConfigured,
+    sessionExpired: sessionExpired ?? this.sessionExpired,
   );
 
   @override
-  List<Object?> get props => [isOnline, isSyncing, pendingCount, failedCount, lastSyncAt, apiConfigured];
+  List<Object?> get props => [
+    isOnline,
+    isSyncing,
+    pendingCount,
+    failedCount,
+    lastSyncAt,
+    apiConfigured,
+    sessionExpired,
+  ];
 }
 
 /// يشغّل المزامنة تلقائيًا: عند عودة الاتصال، وكل [interval]، وعند وجود عمليات جديدة.
@@ -88,7 +102,7 @@ class SyncCubit extends Cubit<SyncState> {
   }
 
   Future<void> syncNow() async {
-    if (_service.isRunning || isClosed) return;
+    if (_service.isRunning || isClosed || state.sessionExpired) return;
     emit(state.copyWith(isSyncing: true));
     final report = await _service.run();
     if (isClosed) return;
@@ -100,6 +114,7 @@ class SyncCubit extends Cubit<SyncState> {
         failedCount: counts.failed,
         lastSyncAt: DateTime.now(),
         apiConfigured: report == null ? null : !report.notConfigured,
+        sessionExpired: report?.unauthorized,
       ),
     );
   }

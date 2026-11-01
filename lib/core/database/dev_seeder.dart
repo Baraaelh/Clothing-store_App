@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import '../../features/online_orders/data/datasources/online_orders_local_data_source.dart';
 import '../../features/online_orders/data/models/online_order_model.dart';
 import '../../features/pos/data/datasources/pos_local_data_source.dart';
@@ -16,7 +14,7 @@ class DevSeeder {
   final OnlineOrdersLocalDataSource _orders;
 
   Future<void> seedIfNeeded() async {
-    if (!kDebugMode || ApiConfig.isConfigured || !await _pos.isCatalogEmpty()) return;
+    if (!ApiConfig.isDevMode || !await _pos.isCatalogEmpty()) return;
 
     final now = DateTime.now().toUtc().toIso8601String();
     await _pos.replaceCatalog([for (final json in _catalog) CatalogItemModel.dbRowFromJson(json, now)]);

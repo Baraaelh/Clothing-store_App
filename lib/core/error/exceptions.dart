@@ -31,6 +31,16 @@ class ServerException implements Exception {
   String toString() => 'ServerException($statusCode): $message';
 }
 
+/// السيرفر رد بـ 401: التوكن غير صالح أو منتهي. يجب تسجيل الدخول من جديد.
+class UnauthorizedException implements Exception {
+  const UnauthorizedException([this.message = 'Unauthorized']);
+
+  final String message;
+
+  @override
+  String toString() => 'UnauthorizedException: $message';
+}
+
 /// الـ API لم يُضبط بعد (لا يوجد baseUrl أو endpoint).
 class ApiNotConfiguredException implements Exception {
   const ApiNotConfiguredException(this.endpoint);

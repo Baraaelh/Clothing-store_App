@@ -5,6 +5,7 @@ import 'package:anaqa_mobile/core/config/app_settings.dart';
 import 'package:anaqa_mobile/core/database/app_database.dart';
 import 'package:anaqa_mobile/core/di/injection.dart';
 import 'package:anaqa_mobile/core/network/network_info.dart';
+import 'package:anaqa_mobile/core/session/session.dart';
 import 'package:anaqa_mobile/core/sync/sync_queue.dart';
 import 'package:anaqa_mobile/features/online_orders/data/datasources/online_orders_local_data_source.dart';
 import 'package:anaqa_mobile/features/online_orders/data/models/online_order_model.dart';
@@ -24,14 +25,15 @@ class OfflineNetwork implements NetworkInfo {
 
 void main() {
   late AppDatabase db;
+  late InMemorySessionStorage storage;
+
+  const owner = Session(token: 'owner-token', userId: 1, userName: 'محمد', role: UserRole.owner, branchId: 1);
 
   setUp(() async {
     db = await createTestDatabase();
+    storage = InMemorySessionStorage(owner); // جلسة محفوظة من تشغيل سابق
     await sl.reset();
-    await configureDependencies(
-      settings: const AppSettings(branchId: 1, cashierName: 'test'),
-      database: db,
-    );
+    await configureDependencies(settings: const AppSettings(), database: db, sessionStorage: storage);
     sl
       ..unregister<NetworkInfo>()
       ..registerSingleton<NetworkInfo>(OfflineNetwork());
@@ -110,5 +112,67 @@ void main() {
 
     final orders = (await tester.runAsync(() => sl<OnlineOrdersLocalDataSource>().getOrders()))!;
     expect(orders.single.hasUnsyncedChange, isTrue);
+  });
+
+  testWidgets('no saved session: login screen, then demo login opens the app', (tester) async {
+    storage.session = null;
+    await tester.pumpWidget(const AnaqaApp());
+    await settle(tester);
+
+    expect(find.text('سجّل الدخول للبدء'), findsOneWidget);
+    expect(find.textContaining('وضع تجريبي'), findsOneWidget);
+
+    await tester.tap(find.text('تسجيل الدخول'));
+    await settle(tester);
+    expect(find.text('أدخل اسم المستخدم'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, 'اسم المستخدم'), 'علي');
+    await tester.enterText(find.widgetWithText(TextField, 'كلمة المرور'), '123');
+    await tester.tap(find.text('تسجيل الدخول'));
+    await settle(tester);
+
+    expect(find.text('قميص أبيض'), findsOneWidget);
+    expect(storage.session?.userName, 'علي', reason: 'session saved for next app start');
+  });
+
+  testWidgets('cashier sees only the POS, without the online orders tab', (tester) async {
+    storage.session = const Session(token: 'c', userId: 2, userName: 'علي', role: UserRole.cashier, branchId: 1);
+    await tester.pumpWidget(const AnaqaApp());
+    await settle(tester);
+
+    expect(find.text('قميص أبيض'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.text('طلبات الموقع'), findsNothing);
+  });
+
+  testWidgets('logout warns about unsent operations, keeps them, and returns to login', (tester) async {
+    await tester.pumpWidget(const AnaqaApp());
+    await settle(tester);
+
+    // بيع بدون إنترنت = عملية واحدة تنتظر الإرسال
+    await tester.tap(find.text('قميص أبيض'));
+    await tester.pump();
+    await tester.tap(find.text('عرض السلة'));
+    await settle(tester);
+    await tester.tap(find.text('إتمام البيع'));
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'المبلغ المستلم (₪)'), '25');
+    await tester.pump();
+    await tester.tap(find.text('تأكيد البيع'));
+    await settle(tester);
+
+    await tester.tap(find.byTooltip('الحساب'));
+    await settle(tester);
+    expect(find.text('المالك • الفرع 1'), findsOneWidget);
+    await tester.tap(find.text('تسجيل الخروج'));
+    await settle(tester);
+    expect(find.textContaining('يوجد 1 عمليات لم تُرسل'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'تسجيل الخروج'));
+    await settle(tester);
+
+    expect(find.text('سجّل الدخول للبدء'), findsOneWidget);
+    expect(storage.session, isNull);
+    final counts = (await tester.runAsync(() => sl<SyncQueue>().counts()))!;
+    expect(counts.pending, 1, reason: 'unsent sale is kept for the next login');
   });
 }
