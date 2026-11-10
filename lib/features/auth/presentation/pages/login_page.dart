@@ -44,10 +44,12 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Icon(Icons.checkroom, size: 64, color: theme.colorScheme.primary),
-                        const SizedBox(height: 12),
-                        Text('متجر الأناقة', textAlign: TextAlign.center, style: theme.textTheme.headlineMedium),
-                        const SizedBox(height: 4),
+                        // الشعار الرسمي كما هو (brand/logo-stacked.svg بدون خلفية).
+                        Image.asset(
+                          'assets/brand/logo.png',
+                          height: 220,
+                          semanticLabel: 'تطبيق الأناقة الذكي',
+                        ),
                         Text(
                           'سجّل الدخول للبدء',
                           textAlign: TextAlign.center,

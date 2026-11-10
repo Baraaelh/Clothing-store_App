@@ -21,7 +21,7 @@ class AnaqaApp extends StatelessWidget {
     return BlocProvider(
       create: (_) => sl<AuthCubit>()..restore(),
       child: MaterialApp(
-        title: 'متجر الأناقة',
+        title: 'الأناقة الذكي',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         locale: const Locale('ar'),
