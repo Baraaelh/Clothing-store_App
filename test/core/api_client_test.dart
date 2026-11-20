@@ -5,13 +5,26 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('resolvePath fills and encodes path params', () {
-    expect(ApiClient.resolvePath('/online-orders/{id}/status', {'id': 'WEB 1'}), '/online-orders/WEB%201/status');
+    expect(ApiClient.resolvePath('/sync/operations/{uuid}', {'uuid': 'a b'}), '/sync/operations/a%20b');
     expect(() => ApiClient.resolvePath('/branches/{branchId}', {}), throwsArgumentError);
   });
 
   test('requests throw ApiNotConfiguredException until the API is configured', () async {
-    expect(() => ApiClient(baseUrl: '').get('/sales'), throwsA(isA<ApiNotConfiguredException>()));
-    expect(() => ApiClient(baseUrl: 'https://x.test').get(null), throwsA(isA<ApiNotConfiguredException>()));
+    expect(() => ApiClient(baseUrl: '').get('/auth/me'), throwsA(isA<ApiNotConfiguredException>()));
+  });
+
+  test('ServerException.displayMessage prefers the first validation error', () {
+    const e = ServerException(
+      'راجع البيانات.',
+      statusCode: 422,
+      body: {
+        'errors': {
+          'username': ['اسم المستخدم مطلوب'],
+        },
+      },
+    );
+    expect(e.displayMessage, 'اسم المستخدم مطلوب');
+    expect(const ServerException('x').displayMessage, 'x');
   });
 
   test('ServerException.isPermanent', () {

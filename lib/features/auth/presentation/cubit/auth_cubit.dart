@@ -63,10 +63,15 @@ class AuthCubit extends Cubit<AuthState> {
     emit(const AuthUnauthenticated());
   }
 
+  Future<void> switchBranch(int branchId) async {
+    if (state is! AuthAuthenticated) return;
+    emit(AuthAuthenticated(await _repository.switchBranch(branchId)));
+  }
+
   /// السيرفر رد بـ 401 أثناء المزامنة.
   Future<void> sessionExpired() async {
     if (state is! AuthAuthenticated) return;
-    await _repository.logout();
+    await _repository.expire();
     emit(const AuthUnauthenticated(sessionExpired: true));
   }
 }

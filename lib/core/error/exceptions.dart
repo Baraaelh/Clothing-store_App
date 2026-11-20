@@ -17,15 +17,31 @@ class NetworkException implements Exception {
   String toString() => 'NetworkException: $message';
 }
 
+/// السيرفر رد بخطأ HTTP. [body] هو رد JSON كما هو (فيه `message` و`errors` عادةً).
 class ServerException implements Exception {
-  const ServerException(this.message, {this.statusCode});
+  const ServerException(this.message, {this.statusCode, this.body, this.retryAfter});
 
   final String message;
   final int? statusCode;
+  final Map<String, Object?>? body;
+
+  /// من ترويسة Retry-After (مع 429/503).
+  final Duration? retryAfter;
 
   /// أخطاء 4xx (غير 408/429) لن تنجح بإعادة المحاولة.
   bool get isPermanent =>
       statusCode != null && statusCode! >= 400 && statusCode! < 500 && statusCode != 408 && statusCode != 429;
+
+  /// أول رسالة تحقق من `errors` إن وُجدت، وإلا `message`.
+  String get displayMessage {
+    final errors = body?['errors'];
+    if (errors is Map) {
+      for (final value in errors.values) {
+        if (value is List && value.isNotEmpty && value.first is String) return value.first as String;
+      }
+    }
+    return message;
+  }
 
   @override
   String toString() => 'ServerException($statusCode): $message';
@@ -41,12 +57,10 @@ class UnauthorizedException implements Exception {
   String toString() => 'UnauthorizedException: $message';
 }
 
-/// الـ API لم يُضبط بعد (لا يوجد baseUrl أو endpoint).
+/// عنوان السيرفر غير مضبوط في هذه النسخة.
 class ApiNotConfiguredException implements Exception {
-  const ApiNotConfiguredException(this.endpoint);
-
-  final String endpoint;
+  const ApiNotConfiguredException();
 
   @override
-  String toString() => 'ApiNotConfiguredException: $endpoint';
+  String toString() => 'ApiNotConfiguredException';
 }

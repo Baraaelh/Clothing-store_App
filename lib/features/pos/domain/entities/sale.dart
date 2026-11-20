@@ -1,8 +1,17 @@
 import 'package:equatable/equatable.dart';
 
-import 'payment_method.dart';
+enum SaleStatus {
+  /// محفوظة على الجهاز وتنتظر قبول السيرفر.
+  pending,
 
-enum SaleSyncState { pending, synced, failed }
+  /// قبلها السيرفر واعتمدها (لها رقم فاتورة).
+  accepted,
+
+  /// رفضها السيرفر وتحتاج مراجعة.
+  review;
+
+  static SaleStatus fromDb(String value) => values.firstWhere((s) => s.name == value, orElse: () => pending);
+}
 
 class SaleItem extends Equatable {
   const SaleItem({
@@ -11,14 +20,12 @@ class SaleItem extends Equatable {
     required this.sku,
     required this.quantity,
     required this.unitPrice,
-    this.colorName,
-    this.sizeName,
+    this.variantLabel,
   });
 
   final int variantId;
   final String productName;
-  final String? colorName;
-  final String? sizeName;
+  final String? variantLabel;
   final String sku;
   final int quantity;
   final int unitPrice;
@@ -26,58 +33,53 @@ class SaleItem extends Equatable {
   int get lineTotal => unitPrice * quantity;
 
   @override
-  List<Object?> get props => [variantId, productName, colorName, sizeName, sku, quantity, unitPrice];
+  List<Object?> get props => [variantId, productName, variantLabel, sku, quantity, unitPrice];
 }
 
-/// فاتورة بيع محفوظة على الجهاز.
+/// فاتورة بيع أُنشئت على هذا الجهاز.
 class Sale extends Equatable {
   const Sale({
     required this.id,
-    required this.branchId,
+    required this.operationUuid,
     required this.cashierName,
-    required this.paymentMethod,
+    required this.paymentLabel,
     required this.items,
     required this.subtotal,
     required this.discount,
     required this.total,
-    required this.amountPaid,
+    required this.paid,
     required this.createdAt,
-    required this.syncState,
+    required this.status,
     this.customerName,
-    this.serverId,
+    this.number,
+    this.change = 0,
   });
 
-  /// UUID يُولد على الجهاز، ويُرسل للسيرفر كـ `client_uuid` لمنع تكرار الفاتورة.
   final String id;
-  final int? serverId;
-  final int branchId;
+
+  /// عملية المزامنة الحالية لهذه الفاتورة (تتغير فقط عند إعادة إرسال مصححة بعد مراجعة).
+  final String operationUuid;
   final String cashierName;
   final String? customerName;
-  final PaymentMethod paymentMethod;
+  final String paymentLabel;
   final List<SaleItem> items;
   final int subtotal;
   final int discount;
   final int total;
-  final int amountPaid;
-  final DateTime createdAt;
-  final SaleSyncState syncState;
 
-  int get change => amountPaid > total ? amountPaid - total : 0;
+  /// المقبوض في الفاتورة.
+  final int paid;
+  final DateTime createdAt;
+  final SaleStatus status;
+
+  /// رقم فاتورة السيرفر بعد القبول (مثل SL-0000017).
+  final String? number;
+
+  /// الباقي للزبون (للعرض بعد الحفظ فقط).
+  final int change;
+
+  int get itemCount => items.fold(0, (sum, i) => sum + i.quantity);
 
   @override
-  List<Object?> get props => [
-    id,
-    serverId,
-    branchId,
-    cashierName,
-    customerName,
-    paymentMethod,
-    items,
-    subtotal,
-    discount,
-    total,
-    amountPaid,
-    createdAt,
-    syncState,
-  ];
+  List<Object?> get props => [id, operationUuid, status, number, total, paid, items];
 }

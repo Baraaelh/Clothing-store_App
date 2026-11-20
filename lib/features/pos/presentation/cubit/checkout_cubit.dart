@@ -1,55 +1,59 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/data/reference_data.dart';
 import '../../domain/entities/checkout_request.dart';
 import '../../domain/entities/sale.dart';
+import '../../domain/repositories/pos_repository.dart';
 import '../../domain/usecases/create_sale.dart';
 
-sealed class CheckoutState extends Equatable {
-  const CheckoutState();
+class CheckoutState extends Equatable {
+  const CheckoutState({this.accounts = const [], this.submitting = false, this.sale, this.error});
+
+  final List<PaymentAccount> accounts;
+  final bool submitting;
+
+  /// الفاتورة المحفوظة (نجاح).
+  final Sale? sale;
+
+  /// رسالة خطأ لمرة واحدة.
+  final String? error;
+
+  CheckoutState copyWith({List<PaymentAccount>? accounts, bool? submitting, Sale? sale, String? error}) =>
+      CheckoutState(
+        accounts: accounts ?? this.accounts,
+        submitting: submitting ?? this.submitting,
+        sale: sale,
+        error: error,
+      );
 
   @override
-  List<Object?> get props => [];
-}
-
-class CheckoutIdle extends CheckoutState {
-  const CheckoutIdle();
-}
-
-class CheckoutSubmitting extends CheckoutState {
-  const CheckoutSubmitting();
-}
-
-class CheckoutSuccess extends CheckoutState {
-  const CheckoutSuccess(this.sale);
-
-  final Sale sale;
-
-  @override
-  List<Object?> get props => [sale];
-}
-
-class CheckoutFailure extends CheckoutState {
-  const CheckoutFailure(this.message);
-
-  final String message;
-
-  @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [accounts, submitting, sale, error];
 }
 
 class CheckoutCubit extends Cubit<CheckoutState> {
-  CheckoutCubit(this._createSale) : super(const CheckoutIdle());
+  CheckoutCubit(this._createSale, this._repository) : super(const CheckoutState());
 
   final CreateSale _createSale;
+  final PosRepository _repository;
 
-  Future<void> submit(CheckoutRequest request) async {
-    if (state is CheckoutSubmitting) return;
-    emit(const CheckoutSubmitting());
-    final result = await _createSale(request);
+  Future<void> load() async {
+    final result = await _repository.getAccounts();
     if (isClosed) return;
-    emit(result.fold((f) => CheckoutFailure(f.message), CheckoutSuccess.new));
+    result.fold((f) => emit(state.copyWith(error: f.message)), (accounts) => emit(state.copyWith(accounts: accounts)));
   }
 
-  void reset() => emit(const CheckoutIdle());
+  Future<List<Party>> searchCustomers(String query) async =>
+      (await _repository.searchCustomers(query)).fold((_) => const [], (list) => list);
+
+  Future<void> submit(CheckoutRequest request) async {
+    if (state.submitting) return;
+    emit(state.copyWith(submitting: true));
+    final result = await _createSale(request);
+    if (isClosed) return;
+    result.fold(
+      (f) => emit(state.copyWith(submitting: false, error: f.message)),
+      (sale) => emit(state.copyWith(submitting: false, sale: sale)),
+    );
+  }
 }

@@ -103,11 +103,12 @@ class _LoginPageState extends State<LoginPage> {
                               ? const SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2))
                               : const Text('تسجيل الدخول'),
                         ),
-                        if (ApiConfig.isDevMode) ...[
+                        if (!ApiConfig.isConfigured) ...[
                           const SizedBox(height: 16),
                           const _Banner(
-                            icon: Icons.science_outlined,
-                            text: 'وضع تجريبي: الـ API غير مضبوط، فأي اسم وكلمة مرور تدخل كمالك على الفرع 1.',
+                            icon: Icons.link_off,
+                            text:
+                                'عنوان السيرفر غير مضبوط في هذه النسخة. ابنِ التطبيق مع --dart-define=API_BASE_URL=…/api/v1',
                           ),
                         ],
                       ],
