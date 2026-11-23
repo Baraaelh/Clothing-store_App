@@ -13,7 +13,7 @@ class SyncIndicator extends StatelessWidget {
     return BlocBuilder<SyncCubit, SyncState>(
       builder: (context, state) {
         final (icon, color) = switch (state) {
-          SyncState(isSyncing: true) => (Icons.sync, Theme.of(context).colorScheme.primary),
+          SyncState(isSyncing: true) => (Icons.sync, Theme.of(context).colorScheme.secondary),
           SyncState(reviewCount: > 0) => (Icons.sync_problem, Colors.red),
           SyncState(isOnline: false) => (Icons.cloud_off, Colors.grey),
           SyncState(pendingCount: > 0) => (Icons.cloud_upload_outlined, Colors.orange),

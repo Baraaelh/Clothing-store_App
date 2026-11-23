@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../app/theme.dart';
 import '../../../../core/config/api_config.dart';
 import '../cubit/auth_cubit.dart';
 
@@ -44,9 +45,14 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Icon(Icons.checkroom, size: 64, color: theme.colorScheme.primary),
-                        const SizedBox(height: 12),
-                        Text('متجر الأناقة', textAlign: TextAlign.center, style: theme.textTheme.headlineMedium),
+                        Text(
+                          'تطبيق الأناقة الذكي',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.brandName,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           'سجّل الدخول للبدء',
