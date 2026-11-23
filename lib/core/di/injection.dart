@@ -21,6 +21,7 @@ import '../../features/pos/presentation/cubit/checkout_cubit.dart';
 import '../../features/products/data/catalog_local_data_source.dart';
 import '../../features/products/presentation/products_cubit.dart';
 import '../config/app_settings.dart';
+import '../config/server_config.dart';
 import '../data/reference_data.dart';
 import '../database/app_database.dart';
 import '../network/api_client.dart';
@@ -38,15 +39,19 @@ Future<void> configureDependencies({
   AppDatabase? database,
   SessionStorage? sessionStorage,
   ApiClient? apiClient,
+  ServerConfig? serverConfig,
 }) async {
+  final server = serverConfig ?? ServerConfig();
+  await server.load();
   // ---- Core ----
   sl
     ..registerSingleton<AppSettings>(settings)
+    ..registerSingleton<ServerConfig>(server)
     ..registerSingleton<AppDatabase>(database ?? AppDatabase())
     ..registerSingleton<SessionManager>(SessionManager(sessionStorage ?? SecureSessionStorage()))
     ..registerLazySingleton<Outbox>(() => Outbox(sl()))
     ..registerLazySingleton<ApiClient>(
-      () => apiClient ?? ApiClient(tokenProvider: () async => sl<SessionManager>().current?.token),
+      () => apiClient ?? ApiClient(server: sl(), tokenProvider: () async => sl<SessionManager>().current?.token),
     )
     ..registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(Connectivity()))
     ..registerLazySingleton(() => ReferenceData(sl()));

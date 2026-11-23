@@ -1,3 +1,4 @@
+import 'package:anaqa_mobile/core/config/server_config.dart';
 import 'package:anaqa_mobile/core/error/exceptions.dart';
 import 'package:anaqa_mobile/core/network/api_client.dart';
 import 'package:anaqa_mobile/core/utils/money.dart';
@@ -25,6 +26,13 @@ void main() {
     );
     expect(e.displayMessage, 'اسم المستخدم مطلوب');
     expect(const ServerException('x').displayMessage, 'x');
+  });
+
+  test('server address typed on the login screen is normalized to the v1 base url', () {
+    expect(ServerConfig.normalize('192.168.1.5:8000'), 'http://192.168.1.5:8000/api/v1');
+    expect(ServerConfig.normalize(' https://store.example.com/ '), 'https://store.example.com/api/v1');
+    expect(ServerConfig.normalize('http://10.0.0.2:8000/api/v1'), 'http://10.0.0.2:8000/api/v1');
+    expect(ServerConfig.normalize(''), '');
   });
 
   test('ServerException.isPermanent', () {

@@ -4,4 +4,7 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- نسخة التجربة (debug) فقط: السماح بـ http للاتصال بسيرفر محلي على الواي فاي
+         (php artisan serve). نسخة الإصدار تبقى https فقط. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

@@ -46,9 +46,9 @@ class AuthRepositoryImpl implements AuthRepository {
         deviceName: _settings.deviceName,
       );
     } on ApiNotConfiguredException {
-      return const Err(ServerFailure('عنوان السيرفر غير مضبوط في هذه النسخة'));
+      return const Err(ValidationFailure('اكتب عنوان السيرفر أولًا'));
     } on NetworkException {
-      return const Err(NetworkFailure('تسجيل الدخول يحتاج اتصالًا بالإنترنت'));
+      return const Err(NetworkFailure('تعذر الوصول للسيرفر. تأكد من العنوان ومن الاتصال بالشبكة'));
     } on UnauthorizedException {
       return const Err(ValidationFailure('اسم المستخدم أو كلمة المرور غير صحيحة'));
     } on ServerException catch (e) {

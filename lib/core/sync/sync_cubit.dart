@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../config/api_config.dart';
 import '../network/network_info.dart';
 import '../session/session_manager.dart';
 import 'outbox.dart';
@@ -101,7 +100,7 @@ class SyncCubit extends Cubit<SyncState> {
        _outbox = outbox,
        _network = network,
        _session = session,
-       super(const SyncState(apiConfigured: ApiConfig.baseUrl != ''));
+       super(const SyncState());
 
   final SyncEngine _engine;
   final Outbox _outbox;

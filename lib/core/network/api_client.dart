@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 import '../config/api_config.dart';
+import '../config/server_config.dart';
 import '../error/exceptions.dart';
 
 typedef TokenProvider = Future<String?> Function();
@@ -13,13 +14,12 @@ typedef TokenProvider = Future<String?> Function();
 /// - [ServerException]: أي رد خطأ آخر، مع جسم الرد ورمز الحالة.
 /// - [ApiNotConfiguredException]: لا يوجد عنوان سيرفر.
 class ApiClient {
-  ApiClient({Dio? dio, TokenProvider? tokenProvider, String baseUrl = ApiConfig.baseUrl})
-    : _baseUrl = baseUrl,
+  ApiClient({Dio? dio, TokenProvider? tokenProvider, String? baseUrl, ServerConfig? server})
+    : _server = server ?? ServerConfig.fixed(baseUrl ?? ApiConfig.baseUrl),
       _dio =
           dio ??
           Dio(
             BaseOptions(
-              baseUrl: baseUrl,
               connectTimeout: ApiConfig.connectTimeout,
               receiveTimeout: ApiConfig.receiveTimeout,
               headers: {'Accept': 'application/json'},
@@ -39,7 +39,9 @@ class ApiClient {
   }
 
   final Dio _dio;
-  final String _baseUrl;
+
+  /// العنوان يُقرأ مع كل طلب: قد يغيّره المستخدم من شاشة الدخول.
+  final ServerConfig _server;
 
   Future<Map<String, Object?>> get(
     String endpoint, {
@@ -51,7 +53,8 @@ class ApiClient {
       _send(() => _dio.post<Object?>(resolvePath(endpoint, pathParams), data: body));
 
   Future<Map<String, Object?>> _send(Future<Response<Object?>> Function() request) async {
-    if (_baseUrl.isEmpty) throw const ApiNotConfiguredException();
+    if (!_server.isConfigured) throw const ApiNotConfiguredException();
+    _dio.options.baseUrl = _server.url;
     try {
       final data = (await request()).data;
       return data is Map ? data.cast<String, Object?>() : const {};
