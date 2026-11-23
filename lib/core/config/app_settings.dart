@@ -1,12 +1,12 @@
 /// إعدادات الجهاز العامة. الفرع والمستخدم يأتيان من الجلسة (`SessionManager`).
 class AppSettings {
   const AppSettings({
-    this.deviceName = 'anaqa-mobile',
+    this.deviceName = 'هاتف الأناقة الذكي',
     this.syncInterval = const Duration(minutes: 2),
     this.maxSyncAttempts = 10,
   });
 
-  /// اسم الجهاز المرسل عند تسجيل الدخول (يظهر كاسم للتوكن في السيرفر).
+  /// اسم الجهاز المرسل عند تسجيل الدخول (يظهر في قائمة أجهزة المستخدم على السيرفر).
   final String deviceName;
 
   /// كل كم تحاول المزامنة تلقائيًا أثناء وجود اتصال.

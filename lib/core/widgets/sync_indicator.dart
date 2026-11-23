@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../features/operations/presentation/operations_page.dart';
 import '../sync/sync_cubit.dart';
 
 /// أيقونة حالة المزامنة في الشريط العلوي. الضغط عليها يعرض التفاصيل.
@@ -12,13 +13,13 @@ class SyncIndicator extends StatelessWidget {
     return BlocBuilder<SyncCubit, SyncState>(
       builder: (context, state) {
         final (icon, color) = switch (state) {
-          SyncState(isSyncing: true) => (Icons.sync, Theme.of(context).colorScheme.primary),
-          SyncState(failedCount: > 0) => (Icons.sync_problem, Colors.red),
+          SyncState(isSyncing: true) => (Icons.sync, Theme.of(context).colorScheme.secondary),
+          SyncState(reviewCount: > 0) => (Icons.sync_problem, Colors.red),
           SyncState(isOnline: false) => (Icons.cloud_off, Colors.grey),
           SyncState(pendingCount: > 0) => (Icons.cloud_upload_outlined, Colors.orange),
           _ => (Icons.cloud_done_outlined, Colors.green),
         };
-        final badge = state.pendingCount + state.failedCount;
+        final badge = state.pendingCount + state.reviewCount;
         return IconButton(
           tooltip: 'المزامنة',
           onPressed: () => _showDetails(context),
@@ -37,13 +38,19 @@ class SyncIndicator extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (_) => BlocProvider.value(value: cubit, child: const _SyncSheet()),
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: _SyncSheet(parent: context),
+      ),
     );
   }
 }
 
 class _SyncSheet extends StatelessWidget {
-  const _SyncSheet();
+  const _SyncSheet({required this.parent});
+
+  /// سياق الشاشة الأصلية (لفتح صفحة العمليات بعد إغلاق النافذة).
+  final BuildContext parent;
 
   @override
   Widget build(BuildContext context) {
@@ -60,35 +67,38 @@ class _SyncSheet extends StatelessWidget {
               const SizedBox(height: 12),
               _row('الاتصال', state.isOnline ? 'متصل' : 'غير متصل'),
               _row('عمليات تنتظر الإرسال', '${state.pendingCount}'),
-              _row('عمليات فشلت', '${state.failedCount}'),
+              _row('عمليات تحتاج مراجعة', '${state.reviewCount}'),
               _row(
                 'آخر مزامنة',
                 state.lastSyncAt == null ? '—' : TimeOfDay.fromDateTime(state.lastSyncAt!).format(context),
               ),
+              if (state.lastError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('آخر خطأ: ${state.lastError}', style: const TextStyle(color: Colors.orange)),
+                ),
               if (!state.apiConfigured)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
-                  child: Text(
-                    'الـ API لم يُضبط بعد. البيانات محفوظة على الجهاز وستُرسل عند ضبطه.',
-                    style: TextStyle(color: Colors.orange),
-                  ),
+                  child: Text('عنوان السيرفر غير مضبوط في هذه النسخة.', style: TextStyle(color: Colors.orange)),
                 ),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: state.isSyncing || !state.isOnline ? null : cubit.syncNow,
+                onPressed: state.isSyncing ? null : () => cubit.syncNow(force: true),
                 icon: state.isSyncing
                     ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.sync),
                 label: const Text('مزامنة الآن'),
               ),
-              if (state.failedCount > 0) ...[
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: state.isSyncing ? null : cubit.retryFailed,
-                  icon: const Icon(Icons.replay),
-                  label: const Text('إعادة محاولة العمليات الفاشلة'),
-                ),
-              ],
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  OperationsPage.open(parent);
+                },
+                icon: const Icon(Icons.list_alt),
+                label: Text(state.reviewCount > 0 ? 'مراجعة العمليات المرفوضة' : 'عرض العمليات'),
+              ),
             ],
           ),
         );

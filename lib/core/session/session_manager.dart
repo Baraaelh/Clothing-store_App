@@ -9,6 +9,8 @@ class SessionManager {
   final SessionStorage _storage;
   Session? _current;
 
+  SessionStorage get storage => _storage;
+
   Session? get current => _current;
 
   /// للعمليات التي لا تحدث إلا بعد تسجيل الدخول.
@@ -25,6 +27,4 @@ class SessionManager {
     _current = null;
     await _storage.clear();
   }
-
-  Future<int?> lastBranchId() => _storage.lastBranchId();
 }

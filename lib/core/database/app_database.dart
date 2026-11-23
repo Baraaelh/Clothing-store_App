@@ -7,7 +7,7 @@ import 'schema.dart';
 class AppDatabase {
   AppDatabase({DatabaseFactory? factory, String? path}) : _factory = factory ?? databaseFactory, _path = path;
 
-  static const int version = 1;
+  static const int version = 2;
   static const String fileName = 'anaqa_mobile.db';
 
   final DatabaseFactory _factory;
@@ -25,13 +25,27 @@ class AppDatabase {
         onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
         onCreate: (db, version) async {
           final batch = db.batch();
-          for (final statement in Schema.v1) {
+          for (final statement in Schema.v2) {
             batch.execute(statement);
           }
           await batch.commit(noResult: true);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
-          // أضف هنا ترحيلات الإصدارات القادمة: if (oldVersion < 2) { ... }
+          if (oldVersion < 2) {
+            // v1 كان قبل ربط الـ API الحقيقي (بيانات تجريبية فقط): نبدأ من جديد.
+            final tables = await db.rawQuery(
+              "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+            );
+            final batch = db.batch();
+            for (final t in tables) {
+              batch.execute('DROP TABLE IF EXISTS "${t['name']}"');
+            }
+            for (final statement in Schema.v2) {
+              batch.execute(statement);
+            }
+            await batch.commit(noResult: true);
+          }
+          // ترحيلات الإصدارات القادمة: if (oldVersion < 3) { ... }
         },
       ),
     );

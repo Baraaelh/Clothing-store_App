@@ -1,5 +1,8 @@
 plugins {
     id("com.android.application")
+    // صراحةً: نسخ Flutter الأقدم من 3.47 لا تطبّقه تلقائيًا مع android.builtInKotlin=false،
+    // فيفشل بلوك kotlin {} أدناه. النسخ الأحدث تكتشفه ولا تطبّقه مرة ثانية.
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }

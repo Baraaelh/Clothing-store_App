@@ -10,17 +10,23 @@ abstract interface class SessionStorage {
 
   Future<void> write(Session session);
 
-  /// يحذف الجلسة ويحتفظ بآخر فرع، لمعرفة إن تغيّر الفرع في الدخول القادم.
   Future<void> clear();
 
-  Future<int?> lastBranchId();
+  /// مفتاح نطاق البيانات المحلية لآخر جلسة (مستخدم + فرع)، لمعرفة إن تغيّر في الدخول القادم.
+  Future<String?> lastScope();
+
+  /// UUID الجهاز المحفوظ لهذا الحساب، إن سبق تسجيله.
+  Future<String?> deviceIdFor(String username);
+
+  Future<void> saveDeviceId(String username, String deviceId);
 }
 
 class SecureSessionStorage implements SessionStorage {
   SecureSessionStorage([FlutterSecureStorage? storage]) : _storage = storage ?? const FlutterSecureStorage();
 
-  static const _sessionKey = 'session';
-  static const _lastBranchKey = 'last_branch_id';
+  static const _sessionKey = 'session_v2';
+  static const _scopeKey = 'last_scope';
+  static const _devicePrefix = 'device_id:';
 
   final FlutterSecureStorage _storage;
 
@@ -39,12 +45,22 @@ class SecureSessionStorage implements SessionStorage {
   @override
   Future<void> write(Session session) async {
     await _storage.write(key: _sessionKey, value: jsonEncode(session.toJson()));
-    await _storage.write(key: _lastBranchKey, value: '${session.branchId}');
+    await _storage.write(key: _scopeKey, value: scopeOf(session));
   }
 
   @override
   Future<void> clear() => _storage.delete(key: _sessionKey);
 
   @override
-  Future<int?> lastBranchId() async => int.tryParse(await _storage.read(key: _lastBranchKey) ?? '');
+  Future<String?> lastScope() => _storage.read(key: _scopeKey);
+
+  @override
+  Future<String?> deviceIdFor(String username) => _storage.read(key: '$_devicePrefix${username.toLowerCase()}');
+
+  @override
+  Future<void> saveDeviceId(String username, String deviceId) =>
+      _storage.write(key: '$_devicePrefix${username.toLowerCase()}', value: deviceId);
 }
+
+/// البيانات المحلية (الكاش) تخص مستخدمًا وفرعًا معينين.
+String scopeOf(Session session) => '${session.userId}@${session.branchId}';

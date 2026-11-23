@@ -7,9 +7,10 @@ import '../core/session/session.dart';
 import '../core/sync/sync_cubit.dart';
 import '../features/auth/presentation/cubit/auth_cubit.dart';
 import '../features/auth/presentation/pages/login_page.dart';
-import '../features/online_orders/presentation/cubit/online_orders_cubit.dart';
+import '../features/inventory/presentation/inventory_cubit.dart';
 import '../features/pos/presentation/cubit/cart_cubit.dart';
 import '../features/pos/presentation/cubit/catalog_cubit.dart';
+import '../features/products/presentation/products_cubit.dart';
 import 'home_page.dart';
 import 'theme.dart';
 
@@ -21,7 +22,7 @@ class AnaqaApp extends StatelessWidget {
     return BlocProvider(
       create: (_) => sl<AuthCubit>()..restore(),
       child: MaterialApp(
-        title: 'متجر الأناقة',
+        title: 'الأناقة الذكي',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         locale: const Locale('ar'),
@@ -32,7 +33,10 @@ class AnaqaApp extends StatelessWidget {
           builder: (context, state) => switch (state) {
             AuthChecking() => const Scaffold(body: Center(child: CircularProgressIndicator())),
             AuthUnauthenticated() => const LoginPage(),
-            AuthAuthenticated(:final session) => SessionScope(key: ValueKey(session.token), session: session),
+            AuthAuthenticated(:final session) => SessionScope(
+              key: ValueKey('${session.token}@${session.branchId}'),
+              session: session,
+            ),
           },
         ),
       ),
@@ -40,7 +44,7 @@ class AnaqaApp extends StatelessWidget {
   }
 }
 
-/// كل ما يخص المستخدم المسجل: يُنشأ من جديد مع كل تسجيل دخول ويُغلق عند الخروج،
+/// كل ما يخص المستخدم والفرع الحاليين: يُنشأ من جديد مع كل دخول أو تبديل فرع،
 /// فلا تبقى سلة أو مزامنة من جلسة سابقة.
 class SessionScope extends StatelessWidget {
   const SessionScope({super.key, required this.session});
@@ -52,9 +56,14 @@ class SessionScope extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => sl<SyncCubit>()..start()),
-        BlocProvider(create: (_) => sl<CatalogCubit>()..load()),
-        BlocProvider(create: (_) => sl<CartCubit>()),
-        if (session.canManageOnlineOrders) BlocProvider(create: (_) => sl<OnlineOrdersCubit>()..load()),
+        if (session.canSell) ...[
+          BlocProvider(create: (_) => sl<CatalogCubit>()..load()),
+          BlocProvider(create: (_) => sl<CartCubit>()),
+        ],
+        if (session.canSeeCatalog) ...[
+          BlocProvider(create: (_) => sl<ProductsCubit>()..load()),
+          BlocProvider(create: (_) => sl<InventoryCubit>()..load()),
+        ],
       ],
       child: BlocListener<SyncCubit, SyncState>(
         listenWhen: (a, b) => !a.sessionExpired && b.sessionExpired,

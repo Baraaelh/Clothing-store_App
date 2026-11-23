@@ -3,22 +3,23 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 import '../config/api_config.dart';
+import '../config/server_config.dart';
 import '../error/exceptions.dart';
 
 typedef TokenProvider = Future<String?> Function();
 
 /// غلاف حول Dio يوحد الأخطاء:
 /// - [NetworkException]: لا اتصال / انتهت المهلة.
-/// - [ServerException]: السيرفر رد بخطأ.
-/// - [ApiNotConfiguredException]: المسار أو العنوان غير مضبوط بعد.
+/// - [UnauthorizedException]: 401.
+/// - [ServerException]: أي رد خطأ آخر، مع جسم الرد ورمز الحالة.
+/// - [ApiNotConfiguredException]: لا يوجد عنوان سيرفر.
 class ApiClient {
-  ApiClient({Dio? dio, TokenProvider? tokenProvider, String baseUrl = ApiConfig.baseUrl})
-    : _baseUrl = baseUrl,
+  ApiClient({Dio? dio, TokenProvider? tokenProvider, String? baseUrl, ServerConfig? server})
+    : _server = server ?? ServerConfig.fixed(baseUrl ?? ApiConfig.baseUrl),
       _dio =
           dio ??
           Dio(
             BaseOptions(
-              baseUrl: baseUrl,
               connectTimeout: ApiConfig.connectTimeout,
               receiveTimeout: ApiConfig.receiveTimeout,
               headers: {'Accept': 'application/json'},
@@ -38,30 +39,27 @@ class ApiClient {
   }
 
   final Dio _dio;
-  final String _baseUrl;
 
-  Future<Object?> get(String? endpoint, {Map<String, Object> pathParams = const {}, Map<String, Object?>? query}) =>
-      _send(endpoint, pathParams, (path) => _dio.get<Object?>(path, queryParameters: query));
+  /// العنوان يُقرأ مع كل طلب: قد يغيّره المستخدم من شاشة الدخول.
+  final ServerConfig _server;
 
-  Future<Object?> post(String? endpoint, {Map<String, Object> pathParams = const {}, Object? body}) =>
-      _send(endpoint, pathParams, (path) => _dio.post<Object?>(path, data: body));
+  Future<Map<String, Object?>> get(
+    String endpoint, {
+    Map<String, Object> pathParams = const {},
+    Map<String, Object?>? query,
+  }) => _send(() => _dio.get<Object?>(resolvePath(endpoint, pathParams), queryParameters: query));
 
-  Future<Object?> patch(String? endpoint, {Map<String, Object> pathParams = const {}, Object? body}) =>
-      _send(endpoint, pathParams, (path) => _dio.patch<Object?>(path, data: body));
+  Future<Map<String, Object?>> post(String endpoint, {Map<String, Object> pathParams = const {}, Object? body}) =>
+      _send(() => _dio.post<Object?>(resolvePath(endpoint, pathParams), data: body));
 
-  Future<Object?> _send(
-    String? endpoint,
-    Map<String, Object> pathParams,
-    Future<Response<Object?>> Function(String path) request,
-  ) async {
-    if (_baseUrl.isEmpty || endpoint == null) {
-      throw ApiNotConfiguredException(endpoint ?? '(endpoint not set)');
-    }
+  Future<Map<String, Object?>> _send(Future<Response<Object?>> Function() request) async {
+    if (!_server.isConfigured) throw const ApiNotConfiguredException();
+    _dio.options.baseUrl = _server.url;
     try {
-      final response = await request(resolvePath(endpoint, pathParams));
-      return response.data;
+      final data = (await request()).data;
+      return data is Map ? data.cast<String, Object?>() : const {};
     } on DioException catch (e) {
-      throw _mapDioError(e);
+      throw mapDioError(e);
     }
   }
 
@@ -71,7 +69,7 @@ class ApiClient {
     (m) => Uri.encodeComponent('${params[m.group(1)] ?? (throw ArgumentError('Missing path param ${m.group(1)}'))}'),
   );
 
-  static Exception _mapDioError(DioException e) {
+  static Exception mapDioError(DioException e) {
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
@@ -80,10 +78,16 @@ class ApiClient {
         return NetworkException(e.message ?? 'Connection failed');
       case DioExceptionType.badResponse:
         final response = e.response;
-        if (response?.statusCode == 401) {
-          return UnauthorizedException(_extractMessage(response?.data) ?? 'Unauthorized');
-        }
-        return ServerException(_extractMessage(response?.data) ?? 'Server error', statusCode: response?.statusCode);
+        final body = response?.data is Map ? (response!.data as Map).cast<String, Object?>() : null;
+        final message = body?['message'] is String ? body!['message']! as String : 'Server error';
+        if (response?.statusCode == 401) return UnauthorizedException(message);
+        final retry = int.tryParse(response?.headers.value('retry-after') ?? '');
+        return ServerException(
+          message,
+          statusCode: response?.statusCode,
+          body: body,
+          retryAfter: retry == null ? null : Duration(seconds: retry),
+        );
       case DioExceptionType.unknown:
         if (e.error is SocketException) return NetworkException(e.message ?? 'Socket error');
         return ServerException(e.message ?? 'Unknown error');
@@ -92,11 +96,5 @@ class ApiClient {
       default:
         return ServerException(e.message ?? e.type.name);
     }
-  }
-
-  /// Laravel يرجع الأخطاء بالشكل `{ "message": "..." }`.
-  static String? _extractMessage(Object? data) {
-    if (data is Map && data['message'] is String) return data['message'] as String;
-    return null;
   }
 }

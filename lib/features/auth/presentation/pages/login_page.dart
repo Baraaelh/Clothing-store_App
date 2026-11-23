@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/config/api_config.dart';
+import '../../../../app/theme.dart';
+import '../../../../core/config/server_config.dart';
+import '../../../../core/di/injection.dart';
 import '../cubit/auth_cubit.dart';
 
 class LoginPage extends StatefulWidget {
@@ -12,6 +14,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _server = sl<ServerConfig>();
+  late final _serverUrl = TextEditingController(text: _server.url);
   final _username = TextEditingController();
   final _password = TextEditingController();
   final _passwordFocus = FocusNode();
@@ -19,13 +23,21 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    _serverUrl.dispose();
     _username.dispose();
     _password.dispose();
     _passwordFocus.dispose();
     super.dispose();
   }
 
-  void _submit() => context.read<AuthCubit>().login(_username.text, _password.text);
+  Future<void> _submit() async {
+    final auth = context.read<AuthCubit>();
+    if (!_server.isBuiltIn) {
+      await _server.save(_serverUrl.text);
+      _serverUrl.text = _server.url;
+    }
+    await auth.login(_username.text, _password.text);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,9 +56,14 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Icon(Icons.checkroom, size: 64, color: theme.colorScheme.primary),
-                        const SizedBox(height: 12),
-                        Text('متجر الأناقة', textAlign: TextAlign.center, style: theme.textTheme.headlineMedium),
+                        Text(
+                          'تطبيق الأناقة الذكي',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.brandName,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           'سجّل الدخول للبدء',
@@ -58,6 +75,21 @@ class _LoginPageState extends State<LoginPage> {
                           const _Banner(
                             icon: Icons.lock_clock_outlined,
                             text: 'انتهت الجلسة. سجّل الدخول من جديد، والعمليات غير المرسلة ما زالت محفوظة على الجهاز.',
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        if (!_server.isBuiltIn) ...[
+                          TextField(
+                            controller: _serverUrl,
+                            enabled: !form.submitting,
+                            keyboardType: TextInputType.url,
+                            textDirection: TextDirection.ltr,
+                            decoration: const InputDecoration(
+                              labelText: 'عنوان السيرفر',
+                              hintText: '192.168.1.5:8000',
+                              helperText: 'عنوان جهاز المشروع على نفس الواي فاي، أو رابط الموقع',
+                              prefixIcon: Icon(Icons.dns_outlined),
+                            ),
                           ),
                           const SizedBox(height: 16),
                         ],
@@ -103,13 +135,6 @@ class _LoginPageState extends State<LoginPage> {
                               ? const SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2))
                               : const Text('تسجيل الدخول'),
                         ),
-                        if (ApiConfig.isDevMode) ...[
-                          const SizedBox(height: 16),
-                          const _Banner(
-                            icon: Icons.science_outlined,
-                            text: 'وضع تجريبي: الـ API غير مضبوط، فأي اسم وكلمة مرور تدخل كمالك على الفرع 1.',
-                          ),
-                        ],
                       ],
                     ),
                   );
